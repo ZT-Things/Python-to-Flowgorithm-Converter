@@ -30,6 +30,9 @@ def sum(a, b): # int int int
 
 - `+=` doesn't work, you'll have to do `i = i + 1` instead of `i += 1`
 
+- `+` and `,`  doesn't work for joining strings or outputting variables onto the same line, use `&` instead
+  - For example `print("Hello " & "World!")`
+
 ## 🔤 Supported Syntax
 
 | Python Feature        | Supported |
