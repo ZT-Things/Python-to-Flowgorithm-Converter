@@ -9,10 +9,10 @@ import base64
 
 class PythonToFlowgorithmConverter:
     def __init__(self):
-        self.variables = {}  # Dictionary to track variables and their types
+        self.variables = {}
         self.element_id = 0
-        self.comments = {}  # To store comments for type hints
-        self.function_signatures = {}  # To store function type signatures
+        self.comments = {}
+        self.function_signatures = {}
         
     def get_next_id(self):
         """Generate unique element IDs"""
@@ -23,7 +23,6 @@ class PythonToFlowgorithmConverter:
         """Create the base Flowgorithm XML structure"""
         root = ET.Element("flowgorithm", fileversion="4.2")
         
-        # Add attributes
         attributes = ET.SubElement(root, "attributes")
         
         filename = os.path.splitext(os.path.basename(python_file))[0]
@@ -34,7 +33,6 @@ class PythonToFlowgorithmConverter:
         now = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
         ET.SubElement(attributes, "attribute", name="saved", value=now)
         
-        # Base64 encode creation info
         creation_info = f"Converted;{now}".encode('utf-8')
         creation_b64 = base64.b64encode(creation_info).decode('utf-8')
         ET.SubElement(attributes, "attribute", name="created", value=creation_b64)
@@ -48,7 +46,6 @@ class PythonToFlowgorithmConverter:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # First pass to collect comments
             self.extract_comments(content)
             
             return ast.parse(content)
@@ -63,12 +60,11 @@ class PythonToFlowgorithmConverter:
             if '#' in line:
                 comment = line.split('#')[1].strip().lower()
                 
-                # Check if this is a function definition line
+
                 if 'def ' in line:
                     func_match = re.search(r'def\s+(\w+)\s*\([^)]*\)', line)
                     if func_match:
                         func_name = func_match.group(1)
-                        # Parse function signature comment (e.g., "# int int int" means returns int, takes two ints)
                         types = comment.split()
                         if types:
                             return_type = types[0] if types else 'void'
@@ -78,15 +74,12 @@ class PythonToFlowgorithmConverter:
                                 'param_types': param_types
                             }
                 
-                # Regular variable type hints
                 if comment in ['int', 'integer', 'string', 'str', 'float', 'double', 'boolean', 'bool']:
-                    # Get the line where variable is declared (previous non-empty line)
                     decl_line = i
                     while decl_line >= 0 and not lines[decl_line].strip():
                         decl_line -= 1
                     
                     if decl_line >= 0:
-                        # Try to find variable name in the declaration line
                         match = re.search(r'(\w+)\s*=', lines[decl_line])
                         if match:
                             var_name = match.group(1)
@@ -122,7 +115,7 @@ class PythonToFlowgorithmConverter:
             op_map = {
                 ast.Add: '+', ast.Sub: '-', ast.Mult: '*', 
                 ast.Div: '/', ast.Mod: '%', ast.Pow: '^',
-                ast.BitAnd: '&'  # Added support for '&'
+                ast.BitAnd: '&'
             }
             op = op_map.get(type(expr.op), '?')
             return f"{left} {op} {right}"
@@ -161,7 +154,6 @@ class PythonToFlowgorithmConverter:
                     if expr.args:
                         return self.convert_expression(expr.args[0])
                 else:
-                    # Function call - convert arguments
                     args = [self.convert_expression(arg) for arg in expr.args]
                     return f"{expr.func.id}({', '.join(args)})"
             return "function_call"
@@ -170,7 +162,6 @@ class PythonToFlowgorithmConverter:
     
     def get_variable_type(self, var_name, default="Integer"):
         """Get variable type from comments or context"""
-        # Check if type was specified in comments
         if var_name in self.comments:
             comment = self.comments[var_name]
             if comment in ['int', 'integer']:
@@ -182,17 +173,15 @@ class PythonToFlowgorithmConverter:
             elif comment in ['bool', 'boolean']:
                 return "Boolean"
         
-        # Check if we've already determined the type
         if var_name in self.variables:
             return self.variables[var_name]
         
-        # Default type
         return default
     
     def create_element(self, tag, **attrs):
         elem = ET.Element(tag)
         for key, value in attrs.items():
-            elem.set(key, str(value))  # DO NOT manually escape
+            elem.set(key, str(value))
         return elem
 
     
@@ -217,41 +206,30 @@ class PythonToFlowgorithmConverter:
             element = None
             
             if isinstance(stmt, ast.FunctionDef):
-                # Skip function definitions in the main body - they'll be handled separately
                 continue
                 
             elif isinstance(stmt, ast.Return):
-                # Return statement - don't create an assignment element
-                # The return value is handled by the function's variable attribute
                 continue
                 
             elif isinstance(stmt, ast.Assign):
-                # Assignment statement
                 if len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     var_name = stmt.targets[0].id
                     
-                    # Handle input() assignment
                     if isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and stmt.value.func.id == 'input':
                         prompt = self.convert_expression(stmt.value.args[0]) if stmt.value.args else '""'
                         
-                        # Check if type conversion is needed (e.g., # int comment)
                         var_type = self.get_variable_type(var_name, "String")
                         
-                        # Output the prompt
                         output_elem = self.create_element("output", expression=prompt, newline="True")
                         parent.append(output_elem)
                         
-                        # Declare the variable
                         self.declare_variable(parent, var_name, var_type)
                         
-                        # Input the value (as string)
                         input_elem = self.create_element("input", variable=var_name)
                         parent.append(input_elem)
                         
                         continue
                     else:
-                        # Regular assignment
-                        # Determine variable type from RHS or comments
                         if isinstance(stmt.value, ast.Constant):
                             if isinstance(stmt.value.value, str):
                                 default_type = "String"
@@ -268,7 +246,6 @@ class PythonToFlowgorithmConverter:
                                                     expression=self.convert_expression(stmt.value))
                     
             elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
-                # Function call (like print or custom functions)
                 if isinstance(stmt.value.func, ast.Name):
                     if stmt.value.func.id == 'print':
                         output_text = '""'
@@ -279,50 +256,41 @@ class PythonToFlowgorithmConverter:
                                                     expression=output_text,
                                                     newline="True")
                     else:
-                        # Custom function call
                         func_name = stmt.value.func.id
                         args = [self.convert_expression(arg) for arg in stmt.value.args]
                         call_expr = f"{func_name}({', '.join(args)})"
                         
-                        # If it's a void function, create a call element
                         if func_name in self.function_signatures:
                             sig = self.function_signatures[func_name]
                             if sig['return_type'] == 'void':
                                 element = self.create_element("call", expression=call_expr)
                             else:
-                                # For non-void functions called as statements, we might need special handling
                                 element = self.create_element("call", expression=call_expr)
                         else:
                             element = self.create_element("call", expression=call_expr)
                     
             elif isinstance(stmt, ast.If):
-                # If statement - combine nested ifs with and
                 condition = self.convert_condition(stmt.test)
                 element = self.create_element("if", expression=condition)
                 
-                # Then branch
                 then_elem = self.create_element("then")
                 element.append(then_elem)
                 self.convert_statements(stmt.body, then_elem)
                 
-                # Else branch
                 else_elem = self.create_element("else")
                 element.append(else_elem)
                 if stmt.orelse:
                     self.convert_statements(stmt.orelse, else_elem)
                     
             elif isinstance(stmt, ast.While):
-                # While loop
                 condition = self.convert_condition(stmt.test)
                 element = self.create_element("while", expression=condition)
                 
                 self.convert_statements(stmt.body, element)
                 
             elif isinstance(stmt, ast.For):
-                # For loop (convert to while loop approximation)
                 if isinstance(stmt.iter, ast.Call) and isinstance(stmt.iter.func, ast.Name):
                     if stmt.iter.func.id == 'range':
-                        # Handle range() function
                         start, stop, step = 0, 10, 1
                         
                         if len(stmt.iter.args) == 1:
@@ -335,10 +303,8 @@ class PythonToFlowgorithmConverter:
                             stop = self.convert_expression(stmt.iter.args[1])
                             step = self.convert_expression(stmt.iter.args[2])
                         
-                        # Create initialization
                         if isinstance(stmt.target, ast.Name):
                             var_name = stmt.target.id
-                            # Check for type hint in comments
                             var_type = self.get_variable_type(var_name, "Integer")
                             self.declare_variable(parent, var_name, var_type)
                             
@@ -347,14 +313,11 @@ class PythonToFlowgorithmConverter:
                                                           expression=str(start))
                             parent.append(init_elem)
                             
-                            # Create while loop
                             condition = f"{var_name} < {stop}"
                             element = self.create_element("while", expression=condition)
                             
-                            # Add loop body
                             self.convert_statements(stmt.body, element)
                             
-                            # Add increment
                             increment = self.create_element("assign",
                                                           variable=var_name,
                                                           expression=f"{var_name} + {step}")
@@ -369,15 +332,12 @@ class PythonToFlowgorithmConverter:
             if isinstance(stmt, ast.Return) and stmt.value:
                 if isinstance(stmt.value, ast.Name):
                     return stmt.value.id
-                # If it's not a simple variable name, we'll need to create one
-                # For now, return None to indicate no simple return variable found
         return None
     
     def convert_function(self, func_def, root):
         """Convert a Python function definition to Flowgorithm function"""
         func_name = func_def.name
         
-        # Get function signature from comments
         return_type = "None"
         param_types = []
         
@@ -386,20 +346,17 @@ class PythonToFlowgorithmConverter:
             return_type = self.convert_type_to_flowgorithm(sig['return_type'])
             param_types = [self.convert_type_to_flowgorithm(t) for t in sig['param_types']]
         
-        # Determine return variable name by analyzing return statements
         return_variable = ""
         if return_type != "None":
             return_variable = self.find_return_variable(func_def.body)
             if return_variable is None:
-                return_variable = "result"  # Fallback if no simple return found
+                return_variable = "result"
         
-        # Create function element
         func_elem = ET.SubElement(root, "function",
                                  name=func_name,
                                  type=return_type,
                                  variable=return_variable)
         
-        # Create parameters
         params_elem = ET.SubElement(func_elem, "parameters")
         for i, param in enumerate(func_def.args.args):
             param_type = param_types[i] if i < len(param_types) else "Integer"
@@ -408,15 +365,11 @@ class PythonToFlowgorithmConverter:
                          type=param_type,
                          array="False")
         
-        # Create function body
         body_elem = ET.SubElement(func_elem, "body")
         
-        # If function returns a value, we need to make sure the return variable is declared
         if return_type != "None" and return_variable:
-            # The return variable will be declared when it's first assigned
             pass
         
-        # Convert function body
         self.convert_statements(func_def.body, body_elem)
     
     def convert_condition(self, test):
@@ -436,15 +389,12 @@ class PythonToFlowgorithmConverter:
             print(f"Error: File '{python_file}' not found")
             return False
         
-        # Parse Python file
         tree = self.parse_python_file(python_file)
         if tree is None:
             return False
         
-        # Create Flowgorithm XML
         root = self.create_flowgorithm_xml(python_file)
         
-        # Separate functions from main code
         functions = []
         main_statements = []
         
@@ -454,20 +404,16 @@ class PythonToFlowgorithmConverter:
             else:
                 main_statements.append(stmt)
         
-        # Convert functions first
         for func_def in functions:
             self.convert_function(func_def, root)
         
-        # Create main function
         main_func = ET.SubElement(root, "function", 
                                  name="Main", 
                                  type="None", 
                                  variable="")
         
-        # Parameters (empty for main)
         ET.SubElement(main_func, "parameters")
         
-        # Body
         body = ET.SubElement(main_func, "body")
         
         self.convert_statements(main_statements, body)
