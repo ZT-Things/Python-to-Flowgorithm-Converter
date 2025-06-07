@@ -4,9 +4,9 @@
         <attribute name="name" value="test_converted"/>
         <attribute name="authors" value="Python Converter"/>
         <attribute name="about" value="Converted from test.py"/>
-        <attribute name="saved" value="2025-06-08 04:02:05 AM"/>
-        <attribute name="created" value="Q29udmVydGVkOzIwMjUtMDYtMDggMDQ6MDI6MDUgQU0="/>
-        <attribute name="edited" value="Q29udmVydGVkOzIwMjUtMDYtMDggMDQ6MDI6MDUgQU0="/>
+        <attribute name="saved" value="2025-06-08 04:09:47 AM"/>
+        <attribute name="created" value="Q29udmVydGVkOzIwMjUtMDYtMDggMDQ6MDk6NDcgQU0="/>
+        <attribute name="edited" value="Q29udmVydGVkOzIwMjUtMDYtMDggMDQ6MDk6NDcgQU0="/>
     </attributes>
     <function name="test" type="None" variable="">
         <parameters>
@@ -37,7 +37,7 @@
             <output expression="sum(a, b)" newline="True"/>
             <declare name="x" type="Integer" array="False" size=""/>
             <assign variable="x" expression="1"/>
-            <while expression="x &lt; 5">
+            <while expression="x &lt;= 5">
                 <output expression="x" newline="True"/>
                 <assign variable="x" expression="x + 1"/>
             </while>

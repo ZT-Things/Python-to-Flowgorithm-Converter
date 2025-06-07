@@ -449,7 +449,17 @@ def main():
     input_file = sys.argv[1]
     output_file = sys.argv[2] if len(sys.argv) > 2 else None
     
+    if output_file is None:
+        base_name = os.path.splitext(os.path.basename(input_file))[0]
+        output_file = f"{base_name}.fprg"
+    
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    output_file = os.path.join(output_dir, output_file)
+    
     converter = PythonToFlowgorithmConverter()
+    
     success = converter.convert_file(input_file, output_file)
     
     if success:
