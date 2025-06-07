@@ -1,12 +1,12 @@
 # .py to .fprg Converter
 
-## Usage
+## 📦 Usage
 
 ```bash
 python converter.py [input_file.py] [output_file.fprg]
 ```
 
-## Requirements
+## 📌 Requirements
 
 - All functions **must include a type hint comment** in the following format:
 
@@ -22,8 +22,30 @@ def sum(a, b): # int int int
     return s
 ```
 
-## Known Issues
+## ⚠️ Known Issues
 
 - Return statements **must return a single variable only**.
   - ✅ Allowed: `return result`
   - ❌ Not allowed: `return a + b`
+
+- `+=` doesn't work, you'll have to do `i = i + 1` instead of `i += 1`
+
+## 🔤 Supported Syntax
+
+| Python Feature        | Supported |
+|-----------------------|-----------|
+| Function definitions  | ✅        |
+| Variable assignments  | ✅        |
+| `print()` function    | ✅        |
+| `input()` function    | ✅        |
+| Function calls        | ✅        |
+| Return statements     | ✅        |
+| Arithmetic operations | ✅        |
+| `if` statements       | ✅        |
+| `for` loops           | ✅        |
+| `while` loops         | ✅        |
+| Classes / OOP         | ❌        |
+
+## 🛠 Requirements
+
+- Python 3.x
