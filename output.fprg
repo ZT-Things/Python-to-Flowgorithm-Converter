@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<flowgorithm fileversion="4.2">
+    <attributes>
+        <attribute name="name" value="test_converted"/>
+        <attribute name="authors" value="Python Converter"/>
+        <attribute name="about" value="Converted from test.py"/>
+        <attribute name="saved" value="2025-06-08 03:53:33 AM"/>
+        <attribute name="created" value="Q29udmVydGVkOzIwMjUtMDYtMDggMDM6NTM6MzMgQU0="/>
+        <attribute name="edited" value="Q29udmVydGVkOzIwMjUtMDYtMDggMDM6NTM6MzMgQU0="/>
+    </attributes>
+    <function name="test" type="None" variable="">
+        <parameters>
+            <parameter name="toPrint" type="String" array="False"/>
+        </parameters>
+        <body>
+            <output expression="toPrint" newline="True"/>
+        </body>
+    </function>
+    <function name="sum" type="Integer" variable="s">
+        <parameters>
+            <parameter name="a" type="Integer" array="False"/>
+            <parameter name="b" type="Integer" array="False"/>
+        </parameters>
+        <body>
+            <declare name="s" type="Integer" array="False" size=""/>
+            <assign variable="s" expression="a + b"/>
+        </body>
+    </function>
+    <function name="Main" type="None" variable="">
+        <parameters/>
+        <body>
+            <call expression="test(&quot;Hello World!&quot;)"/>
+            <declare name="a" type="Integer" array="False" size=""/>
+            <assign variable="a" expression="1"/>
+            <declare name="b" type="Integer" array="False" size=""/>
+            <assign variable="b" expression="2"/>
+            <output expression="sum(1, 2)" newline="True"/>
+        </body>
+    </function>
+</flowgorithm>
