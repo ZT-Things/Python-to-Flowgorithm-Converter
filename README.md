@@ -24,6 +24,13 @@ def sum(a, b): # int int int
 
 - Check http://www.flowgorithm.org/documentation/language/intrinsic-functions.html for built-in functions
 
+Example:
+
+```python
+s = input("Input a string") # str
+n = ToInteger(s) # int
+```
+
 ## ⚠️ Known Issues
 
 - Return statements **must return a single variable only**.
