@@ -22,6 +22,8 @@ def sum(a, b): # int int int
     return s
 ```
 
+- Check http://www.flowgorithm.org/documentation/language/intrinsic-functions.html for built-in functions
+
 ## ⚠️ Known Issues
 
 - Return statements **must return a single variable only**.
@@ -41,6 +43,7 @@ def sum(a, b): # int int int
 | Variable assignments  | ✅        |
 | `print()` function    | ✅        |
 | `input()` function    | ✅        |
+| `len()` function      | ✅        |
 | Function calls        | ✅        |
 | Return statements     | ✅        |
 | Arithmetic operations | ✅        |
@@ -48,7 +51,12 @@ def sum(a, b): # int int int
 | `for` loops           | ✅        |
 | `while` loops         | ✅        |
 | Classes / OOP         | ❌        |
+| Array                 | ❌        |
 
 ## 🛠 Requirements
 
 - Python 3.x
+
+## Todo
+
+- Support flowgorithm's built-in function and data type conversation (Done? But not polished)
