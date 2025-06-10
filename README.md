@@ -1,5 +1,7 @@
 # .py to .fprg Converter
 
+Turn code into .fprg for flowgorithm application
+
 ## 📦 Usage
 
 ```bash
