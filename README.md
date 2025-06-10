@@ -59,6 +59,8 @@ n = ToInteger(s) # int
 | `while` loops         | ✅        |
 | Classes / OOP         | ❌        |
 | Array                 | ❌        |
+| I/O                   | ❌        |
+| Turtle                | ❌        |
 
 ## 🛠 Requirements
 
