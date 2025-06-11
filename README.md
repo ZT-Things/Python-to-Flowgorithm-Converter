@@ -24,6 +24,11 @@ def sum(a, b): # int int int
     return s
 ```
 
+- All array **must include a size hint comment** in the following format:
+```python
+arr = [1,2,3,4,5] # 5
+```
+
 - Check http://www.flowgorithm.org/documentation/language/intrinsic-functions.html for built-in functions
 
 Example:
