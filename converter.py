@@ -74,18 +74,16 @@ class PythonToFlowgorithmConverter:
                                 'param_types': param_types
                             }
                 
-                # Check for array size hints (numbers after variable assignments with lists)
                 if comment.isdigit():
                     decl_line = i
                     while decl_line >= 0 and not lines[decl_line].strip():
                         decl_line -= 1
                     
                     if decl_line >= 0:
-                        # Look for list assignment
                         match = re.search(r'(\w+)\s*=\s*\[', lines[decl_line])
                         if match:
                             var_name = match.group(1)
-                            self.comments[var_name] = comment  # Store array size
+                            self.comments[var_name] = comment
                 
                 if comment in ['int', 'integer', 'string', 'str', 'float', 'double', 'boolean', 'bool']:
                     decl_line = i
@@ -123,7 +121,6 @@ class PythonToFlowgorithmConverter:
         elif isinstance(expr, ast.Name):
             return expr.id
         elif isinstance(expr, ast.Subscript):
-            # Handle array indexing like x[i]
             array_name = self.convert_expression(expr.value)
             index = self.convert_expression(expr.slice)
             return f"{array_name}[{index}]"
