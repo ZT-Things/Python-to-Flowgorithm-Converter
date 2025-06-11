@@ -74,6 +74,19 @@ class PythonToFlowgorithmConverter:
                                 'param_types': param_types
                             }
                 
+                # Check for array size hints (numbers after variable assignments with lists)
+                if comment.isdigit():
+                    decl_line = i
+                    while decl_line >= 0 and not lines[decl_line].strip():
+                        decl_line -= 1
+                    
+                    if decl_line >= 0:
+                        # Look for list assignment
+                        match = re.search(r'(\w+)\s*=\s*\[', lines[decl_line])
+                        if match:
+                            var_name = match.group(1)
+                            self.comments[var_name] = comment  # Store array size
+                
                 if comment in ['int', 'integer', 'string', 'str', 'float', 'double', 'boolean', 'bool']:
                     decl_line = i
                     while decl_line >= 0 and not lines[decl_line].strip():
@@ -109,6 +122,11 @@ class PythonToFlowgorithmConverter:
             return str(expr.value)
         elif isinstance(expr, ast.Name):
             return expr.id
+        elif isinstance(expr, ast.Subscript):
+            # Handle array indexing like x[i]
+            array_name = self.convert_expression(expr.value)
+            index = self.convert_expression(expr.slice)
+            return f"{array_name}[{index}]"
         elif isinstance(expr, ast.BinOp):
             left = self.convert_expression(expr.left)
             right = self.convert_expression(expr.right)
@@ -150,6 +168,12 @@ class PythonToFlowgorithmConverter:
                     if expr.args:
                         return self.convert_expression(expr.args[0])
                     return '""'
+                elif expr.func.id == 'Size':
+                    # Handle Size() function for arrays
+                    if expr.args:
+                        array_name = self.convert_expression(expr.args[0])
+                        return f"Size({array_name})"
+                    return "Size()"
                 elif expr.func.id in ['int', 'float', 'str']:
                     if expr.args:
                         return self.convert_expression(expr.args[0])
@@ -157,6 +181,9 @@ class PythonToFlowgorithmConverter:
                     args = [self.convert_expression(arg) for arg in expr.args]
                     return f"{expr.func.id}({', '.join(args)})"
             return "function_call"
+        elif isinstance(expr, ast.List):
+            # Handle list literals - return the elements for processing
+            return [self.convert_expression(elem) for elem in expr.elts]
         else:
             return str(expr)
     
@@ -185,15 +212,21 @@ class PythonToFlowgorithmConverter:
         return elem
 
     
-    def declare_variable(self, parent, var_name, default_type="Integer"):
+    def declare_variable(self, parent, var_name, default_type="Integer", is_array=False, array_size=""):
         """Declare a variable if not already declared"""
         if var_name not in self.variables:
             var_type = self.get_variable_type(var_name, default_type)
+            
+            # Check if this should be an array based on comment hint
+            if var_name in self.comments and self.comments[var_name].isdigit():
+                is_array = True
+                array_size = self.comments[var_name]
+            
             declare_elem = self.create_element("declare", 
                                              name=var_name,
                                              type=var_type,
-                                             array="False",
-                                             size="")
+                                             array=str(is_array),
+                                             size=str(array_size))
             parent.append(declare_elem)
             self.variables[var_name] = var_type
     
@@ -236,38 +269,90 @@ class PythonToFlowgorithmConverter:
                 continue
                 
             elif isinstance(stmt, ast.Assign):
-                if len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
-                    var_name = stmt.targets[0].id
+                if len(stmt.targets) == 1:
+                    target = stmt.targets[0]
                     
-                    if isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and stmt.value.func.id == 'input':
-                        prompt = self.convert_expression(stmt.value.args[0]) if stmt.value.args else '""'
+                    # Handle array element assignment like x[0] = 1
+                    if isinstance(target, ast.Subscript):
+                        array_name = self.convert_expression(target.value)
+                        index = self.convert_expression(target.slice)
+                        value = self.convert_expression(stmt.value)
                         
-                        var_type = self.get_variable_type(var_name, "String")
+                        element = self.create_element("assign",
+                                                    variable=f"{array_name}[{index}]",
+                                                    expression=value)
+                    
+                    # Handle regular variable assignment
+                    elif isinstance(target, ast.Name):
+                        var_name = target.id
                         
-                        output_elem = self.create_element("output", expression=prompt, newline="True")
-                        parent.append(output_elem)
+                        if isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and stmt.value.func.id == 'input':
+                            prompt = self.convert_expression(stmt.value.args[0]) if stmt.value.args else '""'
+                            
+                            var_type = self.get_variable_type(var_name, "String")
+                            
+                            output_elem = self.create_element("output", expression=prompt, newline="True")
+                            parent.append(output_elem)
+                            
+                            self.declare_variable(parent, var_name, var_type)
+                            
+                            input_elem = self.create_element("input", variable=var_name)
+                            parent.append(input_elem)
+                            
+                            continue
                         
-                        self.declare_variable(parent, var_name, var_type)
-                        
-                        input_elem = self.create_element("input", variable=var_name)
-                        parent.append(input_elem)
-                        
-                        continue
-                    else:
-                        if isinstance(stmt.value, ast.Constant):
-                            if isinstance(stmt.value.value, str):
-                                default_type = "String"
-                            elif isinstance(stmt.value.value, (int, float)):
-                                default_type = "Integer" if isinstance(stmt.value.value, int) else "Real"
+                        # Handle list assignment like x = [1,2,3,4,5]
+                        elif isinstance(stmt.value, ast.List):
+                            list_elements = self.convert_expression(stmt.value)
+                            
+                            # Declare as array
+                            array_size = len(list_elements)
+                            if var_name in self.comments and self.comments[var_name].isdigit():
+                                array_size = int(self.comments[var_name])
+                            
+                            # Determine array type from first element
+                            if list_elements:
+                                first_elem = stmt.value.elts[0]
+                                if isinstance(first_elem, ast.Constant):
+                                    if isinstance(first_elem.value, str):
+                                        array_type = "String"
+                                    elif isinstance(first_elem.value, float):
+                                        array_type = "Real"
+                                    elif isinstance(first_elem.value, bool):
+                                        array_type = "Boolean"
+                                    else:
+                                        array_type = "Integer"
+                                else:
+                                    array_type = "Integer"
                             else:
-                                default_type = "String"
+                                array_type = "Integer"
+                            
+                            self.declare_variable(parent, var_name, array_type, is_array=True, array_size=str(array_size))
+                            
+                            # Create assignment statements for each element
+                            for i, elem_value in enumerate(list_elements):
+                                if i < array_size:  # Don't exceed declared array size
+                                    assign_elem = self.create_element("assign",
+                                                                    variable=f"{var_name}[{i}]",
+                                                                    expression=elem_value)
+                                    parent.append(assign_elem)
+                            
+                            continue
                         else:
-                            default_type = "Integer"
-                        
-                        self.declare_variable(parent, var_name, default_type)
-                        element = self.create_element("assign", 
-                                                    variable=var_name,
-                                                    expression=self.convert_expression(stmt.value))
+                            if isinstance(stmt.value, ast.Constant):
+                                if isinstance(stmt.value.value, str):
+                                    default_type = "String"
+                                elif isinstance(stmt.value.value, (int, float)):
+                                    default_type = "Integer" if isinstance(stmt.value.value, int) else "Real"
+                                else:
+                                    default_type = "String"
+                            else:
+                                default_type = "Integer"
+                            
+                            self.declare_variable(parent, var_name, default_type)
+                            element = self.create_element("assign", 
+                                                        variable=var_name,
+                                                        expression=self.convert_expression(stmt.value))
                     
             elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
                 if isinstance(stmt.value.func, ast.Name):

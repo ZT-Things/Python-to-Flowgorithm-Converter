@@ -31,6 +31,10 @@ Example:
 ```python
 s = input("Input a string") # str
 n = ToInteger(s) # int
+
+x = [1,2,3,4,5] # 5
+
+print(Size(x))
 ```
 
 ## ⚠️ Known Issues
@@ -58,8 +62,8 @@ n = ToInteger(s) # int
 | `if` statements       | ✅        |
 | `for` loops           | ✅        |
 | `while` loops         | ✅        |
+| Array                 | ✅        |
 | Classes / OOP         | ❌        |
-| Array                 | ❌        |
 | I/O                   | ❌        |
 | Turtle                | ❌        |
 
