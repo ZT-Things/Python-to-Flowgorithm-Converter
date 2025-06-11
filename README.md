@@ -52,7 +52,6 @@ n = ToInteger(s) # int
 | Variable assignments  | ✅        |
 | `print()` function    | ✅        |
 | `input()` function    | ✅        |
-| `len()` function      | ✅        |
 | Function calls        | ✅        |
 | Return statements     | ✅        |
 | Arithmetic operations | ✅        |
@@ -71,3 +70,7 @@ n = ToInteger(s) # int
 ## Todo
 
 - Support flowgorithm's built-in function and data type conversation (Done? But not polished)
+
+- Support array
+
+- Support for loops properly

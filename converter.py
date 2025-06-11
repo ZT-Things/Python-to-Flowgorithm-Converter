@@ -197,6 +197,30 @@ class PythonToFlowgorithmConverter:
             parent.append(declare_elem)
             self.variables[var_name] = var_type
     
+    def evaluate_expression_value(self, expr):
+        """Try to evaluate an expression to get its numeric value"""
+        try:
+            if isinstance(expr, ast.Constant):
+                return expr.value
+            elif isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.USub):
+                if isinstance(expr.operand, ast.Constant):
+                    return -expr.operand.value
+            elif isinstance(expr, ast.BinOp):
+                left_val = self.evaluate_expression_value(expr.left)
+                right_val = self.evaluate_expression_value(expr.right)
+                if left_val is not None and right_val is not None:
+                    if isinstance(expr.op, ast.Add):
+                        return left_val + right_val
+                    elif isinstance(expr.op, ast.Sub):
+                        return left_val - right_val
+                    elif isinstance(expr.op, ast.Mult):
+                        return left_val * right_val
+                    elif isinstance(expr.op, ast.Div):
+                        return left_val / right_val if right_val != 0 else None
+        except:
+            pass
+        return None
+    
     def convert_statements(self, statements, parent):
         """Convert list of Python statements to Flowgorithm elements"""
         if not statements:
@@ -291,16 +315,20 @@ class PythonToFlowgorithmConverter:
             elif isinstance(stmt, ast.For):
                 if isinstance(stmt.iter, ast.Call) and isinstance(stmt.iter.func, ast.Name):
                     if stmt.iter.func.id == 'range':
-                        start, stop, step = 0, 10, 1
+                        # Handle range() function for for loops
+                        start, end, step = 0, 10, 1
                         
                         if len(stmt.iter.args) == 1:
-                            stop = self.convert_expression(stmt.iter.args[0])
+                            # range(stop)
+                            end = self.convert_expression(stmt.iter.args[0])
                         elif len(stmt.iter.args) == 2:
+                            # range(start, stop)
                             start = self.convert_expression(stmt.iter.args[0])
-                            stop = self.convert_expression(stmt.iter.args[1])
+                            end = self.convert_expression(stmt.iter.args[1])
                         elif len(stmt.iter.args) == 3:
+                            # range(start, stop, step)
                             start = self.convert_expression(stmt.iter.args[0])
-                            stop = self.convert_expression(stmt.iter.args[1])
+                            end = self.convert_expression(stmt.iter.args[1])
                             step = self.convert_expression(stmt.iter.args[2])
                         
                         if isinstance(stmt.target, ast.Name):
@@ -308,20 +336,55 @@ class PythonToFlowgorithmConverter:
                             var_type = self.get_variable_type(var_name, "Integer")
                             self.declare_variable(parent, var_name, var_type)
                             
-                            init_elem = self.create_element("assign",
-                                                          variable=var_name,
-                                                          expression=str(start))
-                            parent.append(init_elem)
+                            # Determine direction based on start, end, and step
+                            direction = "inc"  # default
                             
-                            condition = f"{var_name} < {stop}"
-                            element = self.create_element("while", expression=condition)
+                            # Try to evaluate the values to determine direction
+                            start_val = self.evaluate_expression_value(stmt.iter.args[0] if len(stmt.iter.args) >= 2 else ast.Constant(value=0))
+                            end_val = self.evaluate_expression_value(stmt.iter.args[1] if len(stmt.iter.args) >= 2 else stmt.iter.args[0])
+                            step_val = self.evaluate_expression_value(stmt.iter.args[2] if len(stmt.iter.args) == 3 else ast.Constant(value=1))
                             
+                            # Determine direction
+                            if step_val is not None and step_val < 0:
+                                direction = "dec"
+                            elif start_val is not None and end_val is not None:
+                                if start_val > end_val:
+                                    direction = "dec"
+                                else:
+                                    direction = "inc"
+                            
+                            # For Flowgorithm, we need to handle step properly
+                            # If step is negative, we need to make it positive for the step attribute
+                            # and use "dec" direction
+                            if step_val is not None and step_val < 0:
+                                step = str(abs(step_val))
+                                direction = "dec"
+                            else:
+                                step = str(step_val) if step_val is not None else step
+                            
+                            # Create the for loop element
+                            element = self.create_element("for",
+                                                        variable=var_name,
+                                                        start=str(start),
+                                                        end=str(end),
+                                                        direction=direction,
+                                                        step=str(step))
+                            
+                            # Convert the body of the for loop
                             self.convert_statements(stmt.body, element)
-                            
-                            increment = self.create_element("assign",
-                                                          variable=var_name,
-                                                          expression=f"{var_name} + {step}")
-                            element.append(increment)
+                    else:
+                        # Handle other iterables (convert to while loop as fallback)
+                        print(f"Warning: For loop over {stmt.iter.func.id} not fully supported, converting to while loop")
+                        # Fallback to while loop implementation
+                        condition = "True"  # This would need more sophisticated handling
+                        element = self.create_element("while", expression=condition)
+                        self.convert_statements(stmt.body, element)
+                else:
+                    # Handle other types of for loops (lists, etc.) - convert to while loop
+                    print("Warning: For loop over non-range iterable not fully supported, converting to while loop")
+                    condition = "True"  # This would need more sophisticated handling
+                    element = self.create_element("while", expression=condition)
+                    self.convert_statements(stmt.body, element)
             
             if element is not None:
                 parent.append(element)
