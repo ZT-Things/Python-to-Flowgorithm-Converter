@@ -578,6 +578,12 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     output_file = os.path.join(output_dir, output_file)
+ 
+    input_dir = "input"
+    os.makedirs(input_dir, exist_ok=True)
+    
+    input_file = os.path.join(input_dir, input_file)
+
     
     converter = PythonToFlowgorithmConverter()
     

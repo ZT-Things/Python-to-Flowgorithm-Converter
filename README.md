@@ -71,6 +71,7 @@ print(Size(x))
 | Classes / OOP         | ❌        |
 | I/O                   | ❌        |
 | Turtle                | ❌        |
+| Compile-time error    | ❌        |
 
 ## 🛠 Requirements
 
